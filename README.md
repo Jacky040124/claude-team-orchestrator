@@ -50,7 +50,7 @@ Copy the skill into your Claude Code skills directory:
 
 ```bash
 # Clone the repo
-git clone https://github.com/JackyZhong/claude-team-orchestrator.git
+git clone https://github.com/Jacky040124/claude-team-orchestrator.git
 
 # Copy to Claude Code skills directory
 cp -r claude-team-orchestrator/SKILL.md ~/.claude/skills/team-orchestrator/SKILL.md
