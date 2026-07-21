@@ -1,138 +1,170 @@
 # Team Orchestrator
 
-A Claude Code skill that spawns and coordinates a multi-agent development team — each agent with a specialized role, working in parallel on your task.
+**A Claude Code skill that turns an open ended build request into a human approved plan, a deliberately scoped agent team, and owned parallel work.**
 
-Instead of one Claude doing everything sequentially, Team Orchestrator breaks your task into roles (frontend, backend, tester, researcher, refactorer), spawns dedicated agents for each, and coordinates their work as team lead.
+Team Orchestrator is a portable `SKILL.md` protocol, not a new agent runtime or framework. It encodes how a lead should clarify demand, choose the smallest useful team, divide ownership, coordinate specialists, and verify the result.
 
-## How It Works
+<p align="center">
+  <img src="assets/orchestration-trace.svg" width="100%" alt="Team Orchestrator protocol from request through two human approval gates, bounded roles, owned tasks, and a build gate" />
+</p>
 
+| 2 approval gates | 5 bounded roles | 1 exit gate |
+|:---:|:---:|:---:|
+| PRD, then team composition | No invented roles during a run | Build or compile before delivery |
+
+These are protocol rules in [`SKILL.md`](SKILL.md), not performance claims from a benchmark.
+
+## What I designed
+
+* **A specification gate:** the lead converts an ambiguous request into a PRD that stays at the *what* level, then waits for explicit approval.
+* **A delegation policy:** the lead selects the minimum useful subset from a fixed role pool instead of spawning agents by default.
+* **An ownership model:** tasks receive named owners, dependencies, and file boundaries before parallel execution begins.
+* **Role specific quality controls:** the tester cannot weaken tests; the refactorer has scope limits, rollback rules, and a three failure circuit breaker.
+* **A delivery gate:** the protocol blocks final delivery until a build or compilation check passes.
+
+The interesting artifact is not “multiple agents.” It is the control system around them: when parallelism is justified, who owns what, where humans approve, and how the team knows it is finished.
+
+## Execution protocol
+
+The checked in skill currently describes this sequence:
+
+```text
+request
+  │
+  ├─ AskUserQuestion → clarify goal, scope, constraints, acceptance criteria
+  │
+  ├─ write PRD at the “what” level
+  │       └─ HUMAN GATE 1: approve the PRD
+  │
+  ├─ select the minimum subset of five predefined roles
+  │       └─ HUMAN GATE 2: approve the team
+  │
+  ├─ spawn selected specialists in parallel
+  │
+  ├─ TaskCreate → TaskUpdate(owner, dependencies, file boundaries)
+  │
+  ├─ TaskList + SendMessage → monitor, redirect, unblock
+  │
+  ├─ optional refactor pass after implementation and tests
+  │
+  └─ build / compile gate → synthesize → shut down teammates → report
 ```
-You: /team Build a REST API with a React dashboard
 
-Team Orchestrator:
-  1. Asks clarifying questions → generates a PRD → gets your approval
-  2. Selects the minimum roles needed (e.g., backend + frontend + tester)
-  3. Spawns agents in parallel, each with a focused role prompt
-  4. Creates tasks, assigns ownership, manages dependencies
-  5. Monitors progress, unblocks teammates, resolves conflicts
-  6. Runs a final build check → reports results back to you
-```
+### Verified proof points
 
-## Available Roles
+1. **Parallelism is gated twice.** Steps 1 and 2 require explicit PRD and role plan approval before teammate creation.
+2. **Delegation is constrained.** The role pool contains exactly five roles, and the protocol says to select only roles with concrete work.
+3. **Completion has a hard condition.** Step 7 says not to proceed while the build or compilation check is failing.
 
-| Role | Agent Name | Responsibilities |
-|------|-----------|-----------------|
-| **Frontend Designer** | `frontend` | Builds UI components, pages, and styles. Runs design critique/audit/polish passes. |
-| **Backend Developer** | `backend` | Implements APIs, database logic, and services. Coordinates with tester on failures. |
-| **Tester** | `tester` | Writes and runs tests (unit, integration, E2E). Strict quality bar — no weak assertions, no mirror tests. |
-| **Researcher** | `researcher` | Investigates approaches, evaluates tradeoffs, produces recommendations. Read-only by default. |
-| **Refactorer** | `refactorer` | Post-implementation cleanup. Behavior-preserving refactors with strict scope limits and automatic rollback on failure. |
+## When to use it
 
-Roles are selected per task — a purely backend task won't spawn a frontend agent. You approve the team composition before any agents are created.
+Use this protocol when work has multiple independent tracks and coordination is part of the problem:
 
-## Workflow
+* A feature spans frontend, backend, and behavioral testing.
+* Research, implementation, and verification can progress with clear boundaries.
+* Teammates need to exchange findings or unblock one another.
+* The cost of explicit planning is lower than the cost of conflicting work.
 
-The orchestrator follows a strict 7-step process:
+## When not to use it
 
-1. **Demand Clarification** — Iteratively asks questions until requirements are fully understood
-2. **PRD Generation** — Creates a Product Requirements Document (what, not how) for your approval
-3. **Role Selection** — Proposes the minimum set of roles needed, with justification
-4. **Team Creation** — Spawns agents in parallel with role-specific prompts
-5. **Task Assignment** — Breaks the PRD into discrete tasks with ownership and dependencies
-6. **Monitoring** — Coordinates work, unblocks agents, redirects as needed
-7. **Wrap Up** — Build verification, results synthesis, team shutdown
+Choose one Claude Code session, or a focused subagent, when:
 
-An optional **Step 6.5 (Refactor Pass)** runs after implementation if the refactorer role was selected.
+* The change is small or strictly sequential.
+* Most work touches the same file or depends on one unresolved decision.
+* Coordination overhead and additional token use would exceed the parallelism benefit.
+* You need a production scheduler, durable queue, retry engine, observability layer, or distributed runtime. This repository provides none of those.
+
+## Status and limitations
+
+**Status: design prototype and executable instruction artifact.** The repository contains one skill protocol, not runtime code, automated evaluations, recorded benchmarks, or a production deployment.
+
+The current `SKILL.md` also targets an older Claude Code agent team tool surface:
+
+* It names `TeamCreate` and `TeamDelete`. [Current Claude Code documentation](https://code.claude.com/docs/en/agent-teams) says those tools were removed in v2.1.178.
+* It passes `team_name` to `Agent`; current documentation says that input is accepted but ignored.
+* Agent teams remain experimental, are disabled by default, consume more tokens than a single session, and have documented limitations around resumption, task state, and shutdown.
+* The role prompts reference external skills and tools that are not bundled or tested by this repository.
+
+Treat the repository as evidence of orchestration design. Before relying on it for current production work, migrate the legacy team lifecycle calls, test the protocol against a current Claude Code release, and add repeatable evaluation scenarios.
+
+## Role contracts
+
+| Role | Owns | Encoded constraint |
+|---|---|---|
+| Frontend designer | Components, pages, styles | Prompt references external design critique and audit skills |
+| Backend developer | APIs, services, data logic | Coordinates implementation failures with the tester |
+| Researcher | Evidence and recommendations | Read only by default; challenges assumptions |
+| Tester | Test files and verification | Cannot weaken tests or edit implementation to force a pass |
+| Refactorer | Behavior preserving cleanup | Runs only after implementation; limited scope with rollback rules |
+
+The protocol uses a fixed pool so the lead has to justify delegation instead of inventing a role for every task.
 
 ## Installation
 
-Copy the skill into your Claude Code skills directory:
+Claude Code discovers personal skills from `~/.claude/skills/<skill-name>/SKILL.md`. The directory name determines the slash command, so this installation creates `/team-orchestrator`.
 
 ```bash
-# Clone the repo
-git clone https://github.com/Jacky040124/claude-team-orchestrator.git
-
-# Copy to Claude Code skills directory
-cp -r claude-team-orchestrator/SKILL.md ~/.claude/skills/team-orchestrator/SKILL.md
+git clone --depth 1 https://github.com/Jacky040124/claude-team-orchestrator.git
+mkdir -p ~/.claude/skills/team-orchestrator
+cp claude-team-orchestrator/SKILL.md ~/.claude/skills/team-orchestrator/SKILL.md
 ```
 
-Or manually: create `~/.claude/skills/team-orchestrator/` and place `SKILL.md` inside it.
+For a project only installation:
 
-## Usage
-
-In Claude Code, simply type:
-
-```
-/team
+```bash
+mkdir -p .claude/skills/team-orchestrator
+cp /path/to/claude-team-orchestrator/SKILL.md .claude/skills/team-orchestrator/SKILL.md
 ```
 
-Or describe your task naturally — the skill triggers on phrases like "spawn team", "create team", or "start team".
+Agent teams are currently experimental. Follow the [official agent team setup](https://code.claude.com/docs/en/agent-teams) for the Claude Code version you are running. Skill paths and command naming are documented in the [official skills guide](https://code.claude.com/docs/en/skills).
 
-### Example Prompts
+## Invocation
 
-```
-/team Build a CLI tool that converts markdown files to PDF
+Invoke the installed skill directly:
 
-/team Add user authentication to my Express app
-
-/team I need a React component library with a button, modal, and toast
+```text
+/team-orchestrator Build a REST API and React dashboard
 ```
 
-The orchestrator will always start by asking clarifying questions before doing anything. You stay in control at every checkpoint.
+Or trigger it through the description in `SKILL.md`:
 
-## Design Principles
+```text
+Use the team-orchestrator skill. Spawn a team to build a markdown-to-PDF CLI.
+```
 
-- **You approve everything.** PRD, role selection, and final results all require your explicit sign-off.
-- **Minimum viable team.** Only roles with concrete work get spawned. No "just in case" agents.
-- **PRD stays at the *what* level.** Implementation decisions belong to the agents, not the spec. This prevents premature lock-in.
-- **File boundaries.** No two agents edit the same file, eliminating merge conflicts.
-- **Circuit breakers everywhere.** Agents stop and report after 3 consecutive failures instead of looping.
-- **Build before delivery.** Results are never reported without a passing build/compilation check.
+The current protocol begins with requirement clarification. It should not create teammates until you approve both the PRD and the proposed role set.
 
-## Optional Dependencies
+## Referenced integrations
 
-The skill works standalone, but some role prompts reference optional tools for enhanced capabilities:
+These projects are mentioned inside role prompts. They are not bundled dependencies, and fallback behavior is not fully specified by the current protocol.
 
-| Dependency | Used By | Purpose |
-|-----------|---------|---------|
-| [Impeccable Design Skills](https://github.com/anthropics/anthropic-agent-skills) (`/critique`, `/audit`, `/polish`, etc.) | Frontend | Design quality assessment and refinement |
-| [Ghost-OS](https://github.com/anthropics/ghost-os) | Tester | E2E testing of native macOS and Electron apps |
-| [OpenCLI](https://github.com/nicholaschen/opencli) | Researcher | Access auth-walled platforms via browser session |
+| Integration | Referenced by | Project |
+|---|---|---|
+| Impeccable | Frontend designer | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) |
+| Ghost OS | Tester | [ghostwright/ghost-os](https://github.com/ghostwright/ghost-os) |
+| OpenCLI | Researcher | [jackwener/OpenCLI](https://github.com/jackwener/OpenCLI) |
 
-If these aren't installed, the corresponding features gracefully degrade — agents simply skip those steps.
+## Protocol map
 
-## Customization
+The deep behavior lives in [`SKILL.md`](SKILL.md):
 
-### Adding or Modifying Roles
+* **Role Pool:** five role prompts with responsibilities and boundaries.
+* **Steps 1 and 2:** demand clarification, PRD construction, role selection, and approval.
+* **Steps 3 through 6:** team lifecycle, parallel spawn, task ownership, and coordination.
+* **Step 6.5:** optional behavior preserving refactoring after tests pass.
+* **Step 7:** build verification, synthesis, teammate shutdown, and reporting.
+* **Rules:** mandatory approvals, role constraints, and the delivery gate.
 
-Edit the **Role Pool** section in `SKILL.md`. Each role needs:
-- A name and short identifier (e.g., `frontend`)
-- A prompt template defining responsibilities, workflow, and coordination rules
-- Clear boundaries on what the role owns (files, responsibilities)
+## Roadmap
 
-### Adjusting the Workflow
-
-The 7-step process is defined in `SKILL.md` under the `## Step N` headings. You can:
-- Add/remove approval checkpoints
-- Change task granularity limits
-- Modify the refactorer's scope constraints
-- Adjust circuit breaker thresholds
-
-## Requirements
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with access to Agent, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, SendMessage, and AskUserQuestion tools
-- A Claude model that supports multi-agent orchestration (Opus recommended for the team lead)
+* Migrate legacy team lifecycle instructions to the current Claude Code agent team interface.
+* Add three repeatable evaluations: cross layer feature, parallel research, and same file rejection.
+* Capture a real execution trace with task ownership and teammate messages.
+* Define explicit fallback behavior for every referenced integration.
 
 ## Contributing
 
-Contributions welcome! Some areas that could use help:
-
-- **New role templates** — DevOps, data engineer, technical writer, etc.
-- **Workflow improvements** — Better dependency management, parallel task scheduling
-- **Real-world examples** — Share your team orchestration sessions and what worked
-- **Documentation** — Guides for specific use cases (monorepo, microservices, etc.)
-
-Please open an issue first to discuss significant changes.
+Contributions are welcome, especially current Claude Code compatibility updates, evaluation fixtures, and evidence from real orchestration runs. Please open an issue before a substantial protocol change.
 
 ## License
 
