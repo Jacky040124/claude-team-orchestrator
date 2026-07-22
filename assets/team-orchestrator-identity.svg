@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Team Orchestrator identity</title>
+  <desc id="desc">A minimal coordination mark. One request passes through two approval gates into one coordinator, which connects to five bounded roles.</desc>
+
+  <rect width="1200" height="360" fill="#FAFAF7"/>
+
+  <g fill="none" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M72 180H250"/>
+    <path d="M330 180H350"/>
+    <path d="M350 180L472 92"/>
+    <path d="M350 180L486 136"/>
+    <path d="M350 180H492"/>
+    <path d="M350 180L486 224"/>
+    <path d="M350 180L472 268"/>
+
+    <path d="M146 136V224" stroke-width="9"/>
+    <path d="M196 136V224" stroke-width="9"/>
+
+    <circle cx="290" cy="180" r="40" fill="#FF4D00" stroke="#111111" stroke-width="6"/>
+    <circle cx="480" cy="86" r="14" fill="#FAFAF7"/>
+    <circle cx="496" cy="133" r="14" fill="#FAFAF7"/>
+    <circle cx="506" cy="180" r="14" fill="#FAFAF7"/>
+    <circle cx="496" cy="227" r="14" fill="#FAFAF7"/>
+    <circle cx="480" cy="274" r="14" fill="#FAFAF7"/>
+  </g>
+
+  <circle cx="290" cy="180" r="8" fill="#111111"/>
+
+  <g fill="#111111" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="610" y="127" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="700" letter-spacing="3">TEAM</text>
+    <text x="606" y="191" font-size="52" font-weight="780" letter-spacing="-1.8">ORCHESTRATOR</text>
+    <text x="610" y="234" font-size="18" font-weight="500" fill="#545454">Human approval before bounded parallel work.</text>
+  </g>
+
+  <rect x="610" y="265" width="92" height="4" rx="2" fill="#FF4D00"/>
+</svg>

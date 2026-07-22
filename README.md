@@ -5,7 +5,7 @@
 Team Orchestrator is a portable `SKILL.md` protocol, not a new agent runtime or framework. It encodes how a lead should clarify demand, choose the smallest useful team, divide ownership, coordinate specialists, and verify the result.
 
 <p align="center">
-  <img src="assets/orchestration-trace.svg" width="100%" alt="Team Orchestrator protocol from request through two human approval gates, bounded roles, owned tasks, and a build gate" />
+  <img src="assets/team-orchestrator-identity.svg" width="100%" alt="Team Orchestrator identity: one coordinator routes work to five bounded roles after two human approval gates" />
 </p>
 
 | 2 approval gates | 5 bounded roles | 1 exit gate |
@@ -49,6 +49,10 @@ request
   │
   └─ build / compile gate → synthesize → shut down teammates → report
 ```
+
+<p align="center">
+  <img src="assets/orchestration-trace.svg" width="100%" alt="Detailed Team Orchestrator protocol from request through two human approval gates, bounded roles, owned tasks, and a build gate" />
+</p>
 
 ### Verified proof points
 
